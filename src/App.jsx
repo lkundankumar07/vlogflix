@@ -1,31 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+const thumbnailGradients = [
+  'linear-gradient(45deg, #345, #789)',
+  'linear-gradient(45deg, #653, #a87)',
+  'linear-gradient(45deg, #356, #78a)',
+];
 
 function App() {
   const [search, setSearch] = useState('');
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const videos = [
-    {
-      id: 1,
-      title: 'Mountain Vlog - Manali Trip',
-      category: 'Travel',
-      views: '1.2M',
-    },
-    {
-      id: 2,
-      title: 'My Daily Routine 2026',
-      category: 'Daily Vlog',
-      views: '850K',
-    },
-    { id: 3, title: 'Bihar Food Challenge', category: 'Food', views: '2.1M' },
-    { id: 4, title: 'Coding Setup Tour', category: 'Tech', views: '500K' },
-    {
-      id: 5,
-      title: 'College Life Vlog',
-      category: 'Daily Vlog',
-      views: '900K',
-    },
-    { id: 6, title: 'Goa Beach Party', category: 'Travel', views: '3.4M' },
-  ];
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch('/api/videos', { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Unable to load videos. Please try again later.');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid video data received from the server.');
+        }
+        setVideos(data);
+        setLoading(false);
+      })
+      .catch((fetchError) => {
+        if (fetchError.name === 'AbortError') return;
+        setError(fetchError.message);
+        setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, []);
 
   const filtered = videos.filter((v) =>
     v.title.toLowerCase().includes(search.toLowerCase())
@@ -48,16 +59,19 @@ function App() {
           alignItems: 'center',
         }}
       >
-        <h1
-          style={{
-            color: 'red',
-            fontSize: '40px',
-            fontWeight: '900',
-            margin: 0,
-          }}
-        >
-          VLOGFLIX
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img src="/logo.png" alt="Vlogflix logo" width="50" />
+          <h1
+            style={{
+              color: 'red',
+              fontSize: '40px',
+              fontWeight: '900',
+              margin: 0,
+            }}
+          >
+            VLOGFLIX
+          </h1>
+        </div>
         <input
           placeholder="Search vlogs..."
           value={search}
@@ -81,38 +95,49 @@ function App() {
             marginTop: '20px',
           }}
         >
-          {filtered.map((video) => (
-            <div
-              key={video.id}
-              style={{
-                background: '#1a1a1a',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                cursor: 'pointer',
-              }}
-            >
+          {loading ? (
+            <p>Loading videos...</p>
+          ) : error ? (
+            <p role="alert">{error}</p>
+          ) : filtered.length === 0 ? (
+            <p>No videos found.</p>
+          ) : (
+            filtered.map((video) => (
               <div
+                key={video.id}
                 style={{
-                  height: '140px',
-                  background: `linear-gradient(45deg, #${Math.floor(Math.random() * 900) + 100}, #${Math.floor(Math.random() * 900) + 100})`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '50px',
+                  background: '#1a1a1a',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
                 }}
               >
-                ▶️
+                <div
+                  style={{
+                    height: '140px',
+                    background:
+                      thumbnailGradients[
+                        video.id % thumbnailGradients.length
+                      ],
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '50px',
+                  }}
+                >
+                  ▶️
+                </div>
+                <div style={{ padding: '12px' }}>
+                  <h3 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>
+                    {video.title}
+                  </h3>
+                  <p style={{ margin: 0, color: 'gray', fontSize: '13px' }}>
+                    {video.category} • {video.views} views
+                  </p>
+                </div>
               </div>
-              <div style={{ padding: '12px' }}>
-                <h3 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>
-                  {video.title}
-                </h3>
-                <p style={{ margin: 0, color: 'gray', fontSize: '13px' }}>
-                  {video.category} • {video.views} views
-                </p>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
